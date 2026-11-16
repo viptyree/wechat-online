@@ -20,7 +20,7 @@ const ScreenshotButton = ({ buttonProps }: Props) => {
 
 	/**
 	 * 创建截图的处理函数
-	 * 流程：切换预览模式 -> 检查浏览器兼容性 -> 获取屏幕流 -> 裁剪区域 -> 生成截图 -> 下载
+	 * 流程：切换预览模式 -> 检查浏览器兼容性 -> 获取屏幕流 -> 按元素区域裁切 -> 生成截图 -> 下载
 	 */
 	const handleCreateScreenshot = async () => {
 		// 切换到预览模式，隐藏编辑工具栏等 UI 元素
@@ -59,13 +59,23 @@ const ScreenshotButton = ({ buttonProps }: Props) => {
 			screenElement.style.height = `${innerHeight}px`;
 		}
 
-		// 使用 Region Capture API 将视频流裁剪到目标元素边界
 		const [videoTrack] = stream.getVideoTracks();
-		const cropTarget = await CropTarget.fromElement(screenElement);
-		await videoTrack.cropTo(cropTarget);
+		const rect = screenElement.getBoundingClientRect();
 
-		// 将视频流绘制到 canvas 上
-		const canvas = await drawToCanvas(stream);
+		let canvas: HTMLCanvasElement;
+		try {
+			// 直接按元素在页面中的矩形位置裁切，避免浏览器裁剪造成的边缘黑边
+			canvas = await drawToCanvas(stream, {
+				x: rect.left,
+				y: rect.top,
+				width: rect.width,
+				height: rect.height,
+			});
+		} catch (e: any) {
+			message.error(e?.message);
+			videoTrack.stop();
+			return;
+		}
 
 		// 将 canvas 转换为 blob 并下载，完成后停止视频轨道并刷新页面
 		canvas.toBlob((blob) => {
