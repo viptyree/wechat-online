@@ -6,12 +6,14 @@ import {
 	type Middleware,
 	autoUpdate,
 	detectOverflow,
+	offset,
 	size,
 	useFloating,
 } from "@floating-ui/react";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { twJoin } from "tailwind-merge";
+import useMode from "../useMode";
 
 type ActivatedBorderProps = {
 	element: Element;
@@ -49,20 +51,23 @@ const screenOverflow: Middleware = {
 };
 
 const DetectedOverlay = ({ element, type, nodeId }: ActivatedBorderProps) => {
-	const { floatingStyles, refs, elements } = useFloating({
+	const { floatingStyles, refs } = useFloating({
 		elements: {
 			reference: element,
 		},
-		placement: "top-start",
+		placement: "bottom-start",
 		middleware: [
+			offset(({ rects }) => -rects.reference.height),
 			screenOverflow,
 			size({
-				apply: ({ elements, middlewareData }) => {
+				apply: ({ elements, middlewareData, rects }) => {
 					const { overflow } = middlewareData.screenOverflow;
 					const clipTop = overflow.top;
 					const clipBottom = overflow.bottom;
 					const needClip = clipTop > 0 || clipBottom > 0;
 					Object.assign(elements.floating.style, {
+						width: `${rects.reference.width}px`,
+						height: `${rects.reference.height}px`,
 						clipPath: needClip
 							? `inset(${clipTop > 0 ? clipTop : -28}px 0 ${clipBottom}px 0)`
 							: "unset",
@@ -70,10 +75,9 @@ const DetectedOverlay = ({ element, type, nodeId }: ActivatedBorderProps) => {
 				},
 			}),
 		],
-		whileElementsMounted: autoUpdate,
+		whileElementsMounted: (reference, floating, update) =>
+			autoUpdate(reference, floating, update, { animationFrame: true }),
 	});
-
-	const elementRect = elements.reference!.getBoundingClientRect();
 
 	const operaionsElement = useMemo(() => {
 		return <TopOperations nodeId={nodeId} />;
@@ -97,9 +101,6 @@ const DetectedOverlay = ({ element, type, nodeId }: ActivatedBorderProps) => {
 					)}
 					style={{
 						...floatingStyles,
-						width: elementRect.width,
-						height: elementRect.height,
-						top: elementRect.height,
 					}}
 				>
 					{type === "activated" && operaionsElement}
@@ -110,6 +111,7 @@ const DetectedOverlay = ({ element, type, nodeId }: ActivatedBorderProps) => {
 };
 
 const DetectedOverall = () => {
+	const { isPreview } = useMode();
 	const activatedNode = useAtomValue(activatedNodeAtom);
 	const hoveredNode = useAtomValue(hoveredNodeAtom);
 
@@ -128,6 +130,8 @@ const DetectedOverall = () => {
 			return <DetectedOverlay type="hover" element={element} nodeId={hoveredNode} />;
 		}
 	}, [hoveredNode]);
+
+	if (isPreview) return null;
 
 	return (
 		<>

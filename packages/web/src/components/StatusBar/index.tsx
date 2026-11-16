@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { twJoin } from "tailwind-merge";
 import { canBeDetected } from "../NodeDetected";
+import useDeviceConfig from "../useDeviceConfig";
 import _5GSVG from "./assets/5G.svg?react";
 import BatterySVG from "./assets/battery.svg?react";
 import ChargingSVG from "./assets/charging.svg?react";
@@ -23,6 +24,7 @@ import SignalNoneSVG from "./assets/signalNone.svg?react";
 import WifiSVG from "./assets/wifi.svg?react";
 
 const StatusBar = () => {
+	const { isAndroid } = useDeviceConfig();
 	const mountNode = useAtomValue(statusBarMountNodeAtom);
 	const [{ backgroundColor, theme }, setStatusBar] = useAtom(statusBarAtom);
 	const { hide, signalIconType, batteryIconType, networkIconType } =
@@ -39,10 +41,12 @@ const StatusBar = () => {
 	const fromSiblingNodeSetColor = (sibling: Element) => {
 		if (mountNode !== null || !sibling) return;
 		if (
-			sibling.nextSibling === null &&
-			document.querySelector("#screen")!.childElementCount === 2
+			(!sibling.nextElementSibling ||
+				sibling.nextElementSibling.classList.contains("android-navigation")) &&
+			sibling.parentElement?.id === "screen" &&
+			sibling.firstElementChild !== null
 		) {
-			fromSiblingNodeSetColor(sibling.childNodes[0] as Element);
+			fromSiblingNodeSetColor(sibling.firstElementChild!);
 		} else {
 			const color = getComputedStyle(sibling).backgroundColor;
 			setStatusBar((pv) => ({
@@ -148,7 +152,8 @@ const StatusBar = () => {
 			<canBeDetected.div
 				innerRef={divRef}
 				className={twJoin(
-					"flex items-center justify-between py-2 pr-6 pl-10",
+					"flex shrink-0 items-center justify-between py-2",
+					isAndroid ? "px-5 text-xs" : "pr-6 pl-10",
 					hide && "hidden",
 					isMount && "pointer-events-auto z-10",
 				)}

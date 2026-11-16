@@ -28,24 +28,24 @@ const LeftPanel = () => {
 			key: EMenus.Code,
 			icon: <CodeOutlined />,
 			title: t("menu.code"),
-		}
+		},
 	];
 
 	return (
-		<div className="flex h-screen flex-col pt-4 pr-4" id="left-panel">
+		<div className="flex min-h-0 flex-1 flex-col pt-3" id="left-panel">
 			<div className="flex flex-1 overflow-hidden">
 				<Menu
 					onSelect={({ selectedKeys }) => {
 						const value = selectedKeys[0] as EMenus;
 						setMenu(value);
 					}}
-					style={{ width: "64px" }}
+					style={{ width: "52px", minWidth: "52px" }}
 					selectedKeys={[menu]}
 					items={MENU_ITEMS}
 					mode="inline"
 					inlineCollapsed
 				/>
-				<div className="flex flex-1 flex-col overflow-auto px-4 pt-2">
+				<div className="flex flex-1 flex-col overflow-auto px-3 pt-2">
 					<CommonBlock />
 					{menu === EMenus.Main && <MainMenu />}
 					{menu === EMenus.Trees && <TreesMenu />}

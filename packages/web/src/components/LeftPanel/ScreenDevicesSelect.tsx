@@ -18,6 +18,7 @@ const ScreenDevicesSelect = ({ onChange }: Props) => {
 	}));
 	return (
 		<Select
+			aria-label="设备预设"
 			options={options}
 			value={device}
 			onChange={(v) => {

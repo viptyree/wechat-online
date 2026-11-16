@@ -1,91 +1,62 @@
-import useDeviceConfig from "@/components/useDeviceConfig";
-import { modeAtom } from "@/stateV2/mode";
-import { sleep } from "@/utils";
+import { exportScaleAtom } from "@/stateV2/device";
 import { CameraOutlined } from "@ant-design/icons";
-import { App, Button, type ButtonProps } from "antd";
+import { App, Button, type ButtonProps, Modal, Spin } from "antd";
 import { saveAs } from "file-saver";
-import { useSetAtom } from "jotai";
-import { noop } from "lodash-es";
-import { browserName, browserVersion } from "react-device-detect";
-import { checkCanDirectCreateScreenshot, drawToCanvas } from "./utils";
+import { useAtomValue } from "jotai";
+import { useRef, useState } from "react";
+import { exportScreen } from "./export";
 
-type Props = {
-	buttonProps?: ButtonProps;
-};
+type Props = { buttonProps?: ButtonProps };
 
 const ScreenshotButton = ({ buttonProps }: Props) => {
 	const { message } = App.useApp();
-	const { screenSize } = useDeviceConfig();
-	const setMode = useSetAtom(modeAtom);
-
-	/**
-	 * 创建截图的处理函数
-	 * 流程：切换预览模式 -> 检查浏览器兼容性 -> 获取屏幕流 -> 按元素区域裁切 -> 生成截图 -> 下载
-	 */
+	const scale = useAtomValue(exportScaleAtom);
+	const [loading, setLoading] = useState(false);
+	const pending = useRef(false);
 	const handleCreateScreenshot = async () => {
-		// 切换到预览模式，隐藏编辑工具栏等 UI 元素
-		setMode("preview");
-
-		// 检查当前浏览器是否支持直接截图功能
+		if (pending.current) return;
+		pending.current = true;
+		setLoading(true);
 		try {
-			checkCanDirectCreateScreenshot({
-				browserName,
-				browserVersion,
-			});
-		} catch (e: any) {
-			message.error(e?.message);
+			const screen = document.getElementById("screen");
+			if (!screen) throw new Error("未找到聊天画面");
+			const ratio = [1, 2, 3].includes(scale) ? scale : 3;
+			const width = screen.offsetWidth * ratio;
+			const height = screen.offsetHeight * ratio;
+			const blob = await exportScreen(screen, ratio);
+			saveAs(blob, `wechat-${width}x${height}.png`);
+			message.success("PNG 已导出");
+		} catch (error) {
+			message.error(error instanceof Error ? error.message : "导出失败，请重试");
+		} finally {
+			pending.current = false;
+			setLoading(false);
 		}
-
-		// 请求屏幕共享权限，获取媒体流
-		// preferCurrentTab: true 建议浏览器优先选择当前标签页
-		const stream = await navigator.mediaDevices
-			.getDisplayMedia({
-				video: true,
-				audio: false,
-				preferCurrentTab: true,
-			})
-			.catch(noop);
-		if (!stream) return;
-
-		// 等待 UI 渲染稳定（切换到预览模式后的动画和布局调整）
-		await sleep(700);
-
-		// 获取需要截图的目标元素
-		const screenElement = document.querySelector("#screen") as HTMLDivElement;
-
-		// 如果窗口高度小于设备尺寸，调整元素高度以适应视口
-		const innerHeight = window.innerHeight;
-		if (innerHeight < screenSize.height) {
-			screenElement.style.height = `${innerHeight}px`;
-		}
-
-		const [videoTrack] = stream.getVideoTracks();
-		const rect = screenElement.getBoundingClientRect();
-
-		let canvas: HTMLCanvasElement;
-		try {
-			// 直接按元素在页面中的矩形位置裁切，避免浏览器裁剪造成的边缘黑边
-			canvas = await drawToCanvas(stream, {
-				x: rect.left,
-				y: rect.top,
-				width: rect.width,
-				height: rect.height,
-			});
-		} catch (e: any) {
-			message.error(e?.message);
-			videoTrack.stop();
-			return;
-		}
-
-		// 将 canvas 转换为 blob 并下载，完成后停止视频轨道并刷新页面
-		canvas.toBlob((blob) => {
-			saveAs(blob!, "screenshot.png");
-			videoTrack.stop();
-			location.reload();
-		});
 	};
-
-	return <Button onClick={handleCreateScreenshot} icon={<CameraOutlined />} {...buttonProps} />;
+	return (
+		<>
+			<Button
+				icon={<CameraOutlined />}
+				{...buttonProps}
+				onClick={handleCreateScreenshot}
+				loading={loading}
+			/>
+			<Modal
+				open={loading}
+				title="正在生成 PNG"
+				footer={null}
+				closable={false}
+				keyboard={false}
+				maskClosable={false}
+				centered
+				width={320}
+			>
+				<div className="export-progress">
+					<Spin />
+					<span>正在处理字体与图片，请稍候…</span>
+				</div>
+			</Modal>
+		</>
+	);
 };
-
 export default ScreenshotButton;

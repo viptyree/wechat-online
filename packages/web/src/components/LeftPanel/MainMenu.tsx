@@ -1,14 +1,12 @@
 import { HASH_ASSETS_DB_NAME, hashAssetsDB } from "@/db";
 import { touredAtom } from "@/stateV2/tour";
-import { InfoCircleOutlined } from "@ant-design/icons";
-import { App, Button, Dropdown, Tooltip } from "antd";
+
+import { App, Button, Dropdown } from "antd";
 import Dexie from "dexie";
 import { useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import useAppInfo from "../useAppInfo";
 import GenerateRandomUser from "./GenerateRandomUser";
-import ScreenDevicesSelect from "./ScreenDevicesSelect";
-import ScreenshotButton from "./ScreenshotButton";
 
 const MainMenu = () => {
 	const { label, app } = useAppInfo();
@@ -26,18 +24,6 @@ const MainMenu = () => {
 				<div className="grid grid-cols-2 gap-1">
 					<div className="col-span-1">{t("base.curPage")}</div>
 					<div>{label}</div>
-				</div>
-				<div className="grid grid-cols-2 items-center gap-1">
-					<div className="col-span-1">{t("base.csd")}</div>
-					<ScreenDevicesSelect />
-				</div>
-				<div className="grid grid-cols-2 gap-1">
-					<Tooltip title={t("menu.mainBlock.screenshotTooltip")} placement="topLeft">
-						<div className="col-span-1">
-							{t("menu.mainBlock.screenshot")} <InfoCircleOutlined />
-						</div>
-					</Tooltip>
-					<ScreenshotButton />
 				</div>
 
 				<div className="grid grid-cols-2 gap-1">
